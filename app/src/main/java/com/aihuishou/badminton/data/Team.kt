@@ -8,48 +8,14 @@ data class Team(
         return "${player1.name}&${player2.name}"
     }
 
-    fun calTeamAvgPoint(): Int {
-        /** 向上取整 **/
-        return ((player1.point?: 1000) + (player2.point?: 1000) + 1) /2
-    }
-
-    companion object {
-        fun createDefaultTeam(): List<Team> {
-            val playerList = Player.createDefaultPlayerList()
-            return listOf(
-                Team(
-                    playerList[0],
-                    playerList[1],
-                ),
-                Team(
-                    playerList[2],
-                    playerList[3],
-                ),
-                Team(
-                    playerList[4],
-                    playerList[5],
-                ),
-                Team(
-                    playerList[6],
-                    playerList[7],
-                ),
-                Team(
-                    playerList[8],
-                    playerList[9],
-                ),
-                Team(
-                    playerList[10],
-                    playerList[11],
-                ),
-                Team(
-                    playerList[12],
-                    playerList[13],
-                ),
-                Team(
-                    playerList[14],
-                    playerList[15],
-                ),
-            )
+    fun calTeamAvgPoint(): Int? {
+        val matchPoint1 = player1.calMatchPoint()
+        val matchPoint2 = player2.calMatchPoint()
+        return if (matchPoint1 == null || matchPoint2 == null) {
+            null
+        } else {
+            /** 向上取整 **/
+            (matchPoint1 + matchPoint2 + 1) / 2
         }
     }
 }

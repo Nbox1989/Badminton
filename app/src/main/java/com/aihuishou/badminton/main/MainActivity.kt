@@ -207,6 +207,16 @@ class MainActivity : ComponentActivity() {
         return "${firstTeamIndex}vs${secondTeamIndex}"
     }
 
+    private fun calTeamMatchPointDiff(team1: Team, team2: Team): Int? {
+        val avg1 = team1.calTeamAvgPoint()
+        val avg2 = team2.calTeamAvgPoint()
+        return if (avg1 == null || avg2 == null) {
+            null
+        } else {
+            Math.abs(avg2 - avg1)
+        }
+    }
+
     private fun calGameResult(record: GameRecord): EnumGameResult {
         return if(record.firstScore == record.secondScore) {
             EnumGameResult.DRAW
@@ -217,33 +227,38 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun calTeamPointChange(pointDiff: Int, result: EnumGameResult, teams: Pair<Team, Team>): Int {
+    private fun calTeamPointChange(pointDiff: Int, result: EnumGameResult, teams: Pair<Team, Team>): Int? {
         val firstTeam = teams.first
         val secondTeam = teams.second
-        val pointMap = pointMap(pointDiff)
-        return when (result) {
-            EnumGameResult.DRAW -> 0
-            EnumGameResult.WIN -> {
-                if(secondTeam.calTeamAvgPoint() < firstTeam.calTeamAvgPoint()) {
-                    /** 赢，对方分低 **/
-                    pointMap.first
-                } else {
-                    /** 赢，对方分高 **/
-                    pointMap.second
+        val firstAvg = firstTeam.calTeamAvgPoint()
+        val secondAvg = secondTeam.calTeamAvgPoint()
+        if (firstAvg == null || secondAvg == null) {
+            return null
+        } else {
+            val pointMap = pointMap(pointDiff)
+            return when (result) {
+                EnumGameResult.DRAW -> 0
+                EnumGameResult.WIN -> {
+                    if (secondAvg < firstAvg) {
+                        /** 赢，对方分低 **/
+                        pointMap.first
+                    } else {
+                        /** 赢，对方分高 **/
+                        pointMap.second
+                    }
                 }
-            }
-            EnumGameResult.LOSS -> {
-                if(secondTeam.calTeamAvgPoint() < firstTeam.calTeamAvgPoint()) {
-                    /** 败，对方分低 **/
-                    -pointMap.second
-                } else {
-                    /** 败，对方分高 **/
-                    -pointMap.first
-                }
-            }
 
+                EnumGameResult.LOSS -> {
+                    if (secondAvg < firstAvg) {
+                        /** 败，对方分低 **/
+                        -pointMap.second
+                    } else {
+                        /** 败，对方分高 **/
+                        -pointMap.first
+                    }
+                }
+            }
         }
-
     }
 
     private fun pointMap(pointDiff: Int): Pair<Int, Int> {
@@ -609,7 +624,7 @@ class MainActivity : ComponentActivity() {
                         val firstTeam = teamMap?.get(record.firstTeamIndex)
                         val secondTeam = teamMap?.get(record.secondTeamIndex)
                         if (firstTeam != null && secondTeam != null) {
-                            val pointDiff = Math.abs(firstTeam.calTeamAvgPoint() - secondTeam.calTeamAvgPoint())
+                            val pointDiff = calTeamMatchPointDiff(firstTeam, secondTeam)
                             Text(
                                 text = "分差${pointDiff}",
                                 color = Color(0xff333333),
@@ -701,8 +716,7 @@ class MainActivity : ComponentActivity() {
                     0
                 } else {
                     val gameResult = calGameResult(record)
-                    val pointDiff =
-                        Math.abs(firstTeam.calTeamAvgPoint() - secondTeam.calTeamAvgPoint())
+                    val pointDiff = calTeamMatchPointDiff(firstTeam, secondTeam)
                     calTeamPointChange(
                         pointDiff = pointDiff,
                         result = gameResult,
