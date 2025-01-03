@@ -626,24 +626,30 @@ class MainActivity : ComponentActivity() {
                         if (firstTeam != null && secondTeam != null) {
                             val pointDiff = calTeamMatchPointDiff(firstTeam, secondTeam)
                             Text(
-                                text = "分差${pointDiff}",
+                                text = "分差${pointDiff?:"???"}",
                                 color = Color(0xff333333),
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Medium,
                             )
-                            val pointChange = calTeamPointChange(
-                                pointDiff = pointDiff,
-                                result = calGameResult(record),
-                                teams = firstTeam to secondTeam
-                            )
+                            val pointChange = pointDiff?.let { diff ->
+                                calTeamPointChange(
+                                    pointDiff = diff,
+                                    result = calGameResult(record),
+                                    teams = firstTeam to secondTeam
+                                )
+                            }
                             Text(
-                                text = if(pointChange < 0) {
+                                text = if(pointChange == null) {
+                                    "???"
+                                } else if(pointChange < 0) {
                                     pointChange.toString()
                                 } else {
                                     "+$pointChange"
                                 },
-                                color = if(pointChange > 0) {
-                                    Color.Green
+                                color = if(pointChange == null) {
+                                    Color.Blue
+                                } else if(pointChange > 0) {
+                                    Color.Blue
                                 } else if(pointChange < 0) {
                                     Color.Red
                                 } else {
@@ -731,7 +737,7 @@ class MainActivity : ComponentActivity() {
                     "+${pointChange}分"
                 },
                 color = if(pointChange > 0) {
-                    Color.Green
+                    Color.Blue
                 } else if(pointChange < 0) {
                     Color.Red
                 } else {
