@@ -36,12 +36,12 @@ class TeamEditDialog(private val activity: Activity, private val team: Team?) {
 
     private var customDialog: CustomDialog? = null
 
-    private var callback: ((Team?) -> Unit)? = null
+    private var callback: TeamEditCallback? = null
 
     /** menu, create, modify, delete **/
     private val displayContentType = MutableLiveData("menu")
 
-    fun showDialog(callback: (Team?) -> Unit) {
+    fun showDialog(callback :TeamEditCallback) {
         this.callback = callback
         customDialog = CustomDialog.build()
             .setCustomView(object : OnBindView<CustomDialog>(R.layout.dialog_compose_view) {
@@ -92,6 +92,22 @@ class TeamEditDialog(private val activity: Activity, private val team: Team?) {
                 listOf(
                     "创建队伍" to {
                         displayContentType.value = "create"
+                    },
+                    "取消" to {
+                        customDialog?.dismiss()
+                    }
+                )
+            } else if (team.calTeamAvgPoint() == null){
+                listOf(
+                    "修改队伍信息" to {
+                        displayContentType.value = "modify"
+                    },
+                    "删除队伍" to {
+                        displayContentType.value = "delete"
+                    },
+                    "计算定级分" to {
+                        callback?.onRequestGrade(team)
+                        customDialog?.dismiss()
                     },
                     "取消" to {
                         customDialog?.dismiss()
@@ -325,7 +341,7 @@ class TeamEditDialog(private val activity: Activity, private val team: Team?) {
                                 point = inputPoint2.toIntOrNull(),
                             )
                         )
-                        callback?.invoke(newTeam)
+                        callback?.onTeamEditResult(newTeam)
                         customDialog?.dismiss()
                     }
             ) {
@@ -548,7 +564,7 @@ class TeamEditDialog(private val activity: Activity, private val team: Team?) {
                                 point = inputPoint2.toIntOrNull(),
                             )
                         )
-                        callback?.invoke(newTeam)
+                        callback?.onTeamEditResult(newTeam)
                         customDialog?.dismiss()
                     }
             ) {
@@ -612,7 +628,7 @@ class TeamEditDialog(private val activity: Activity, private val team: Team?) {
                         color = Color(0xffF9E72C)
                     )
                     .clickable {
-                        callback?.invoke(null)
+                        callback?.onTeamEditResult(null)
                         customDialog?.dismiss()
                     }
             ) {
@@ -648,4 +664,9 @@ class TeamEditDialog(private val activity: Activity, private val team: Team?) {
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
+}
+
+interface TeamEditCallback {
+    fun onTeamEditResult(newTeam: Team?)
+    fun onRequestGrade(team: Team)
 }

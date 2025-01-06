@@ -1,7 +1,6 @@
 package com.aihuishou.badminton.main
 
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
@@ -17,26 +16,29 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aihuishou.badminton.R
 import com.aihuishou.badminton.data.GameRecord
 import com.aihuishou.badminton.data.MatchData
+import com.aihuishou.badminton.data.Player
 import com.aihuishou.badminton.data.Team
 import com.aihuishou.badminton.enums.EnumGameResult
+import com.aihuishou.badminton.ext.orZero
 import com.aihuishou.badminton.main.dialog.InsertGameRecordDialog
 import com.aihuishou.badminton.main.dialog.SettingListener
 import com.aihuishou.badminton.main.dialog.SettingsDialog
+import com.aihuishou.badminton.main.dialog.TeamEditCallback
 import com.aihuishou.badminton.main.dialog.TeamEditDialog
 import com.aihuishou.badminton.ui.theme.ComposeTheme
 import com.aihuishou.badminton.utils.StorageUtil
 import com.blankj.utilcode.util.ToastUtils
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -125,14 +127,21 @@ class MainActivity : ComponentActivity() {
         return sdf.format(date)
     }
 
-    private fun createDisplayTopTextOfTeam(team: Team): String {
-        return "${team.player1.name}(${team.player1.point?:"待定"})" + "\n" +
-            "${team.player2.name}(${team.player2.point?:"待定"})"
-    }
-
-    private fun createDisplayLeftTextOfTeam(team: Team): String {
-        return "${team.player1.name}(${team.player1.point?:"待定"})" + "\n" +
-                "${team.player2.name}(${team.player2.point?:"待定"})"
+    private fun createDisplayTextOfPlayer(player: Player): AnnotatedString {
+        return buildAnnotatedString {
+            append(player.name)
+            if (player.point != null) {
+                append("(${player.point})")
+            } else if (player.gradingPoint != null) {
+                withStyle(style = SpanStyle(color = Color.Blue)) {
+                    append("(${player.gradingPoint})")
+                }
+            } else {
+                withStyle(style = SpanStyle(color = Color.Red)) {
+                    append("(待定)")
+                }
+            }
+        }
     }
 
     private fun onGameRecordClick(firstTeamIndex: Int, secondTeamIndex: Int) {
@@ -171,14 +180,23 @@ class MainActivity : ComponentActivity() {
         val teamMap = viewModel.teamMap.value
         val team = teamMap?.get(index)
         TeamEditDialog(this, team)
-            .showDialog { newTeam ->
-                val newMap = HashMap(viewModel.teamMap.value?: emptyMap())
-                newMap.put(index, newTeam)
-                viewModel.teamMap.value = newMap
-                if (newTeam == null) {
-                    clearGameRecordOfTeamIndex(index)
+            .showDialog (
+                object : TeamEditCallback {
+                    override fun onTeamEditResult(newTeam: Team?) {
+                        val newMap = HashMap(viewModel.teamMap.value?: emptyMap())
+                        newMap.put(index, newTeam)
+                        viewModel.teamMap.value = newMap
+                        if (newTeam == null) {
+                            clearGameRecordOfTeamIndex(index)
+                        }
+                    }
+
+                    override fun onRequestGrade(team: Team) {
+                        calTeamGradingPoints(index, team)
+                    }
+
                 }
-            }
+            )
     }
 
     private fun onSettingClick() {
@@ -189,9 +207,51 @@ class MainActivity : ComponentActivity() {
                 }
 
                 override fun onRequestGrade() {
-
                 }
             })
+    }
+
+    private fun calTeamGradingPoints(index: Int, team: Team) {
+        val gameRecordMap = viewModel.gameRecordMap.value
+        val teamMap = viewModel.teamMap.value
+
+        val relatedGameRecords = gameRecordMap?.filter { it.key.startsWith("$index") }?.values
+        if (teamMap?.size.orZero() <= 1) {
+            ToastUtils.showShort("队伍数量不足")
+        } else if (relatedGameRecords?.size.orZero() != teamMap?.size.orZero() - 1) {
+            ToastUtils.showShort("还有未结束的比赛")
+        } else {
+            val winGame = relatedGameRecords?.filter { calGameResult(it) == EnumGameResult.WIN }
+            val lossGame = relatedGameRecords?.filter { calGameResult(it) == EnumGameResult.LOSS }
+            val highestWin = winGame?.map {
+                val opponentTeam = teamMap?.get(it.secondTeamIndex)
+                ((opponentTeam?.player1?.point?: 1000) + (opponentTeam?.player2?.point?: 1000)) / 2
+            }?.maxOf { it }
+            val lowestLoss = lossGame?.map {
+                val opponentTeam = teamMap?.get(it.secondTeamIndex)
+                ((opponentTeam?.player1?.point ?: 1000) + (opponentTeam?.player2?.point ?: 1000)) / 2
+            }?.minOf { it }
+            val teamGradingPoint = if (winGame?.size.orZero() == 0 ) {
+                lowestLoss.orZero()
+            } else if (lossGame?.size.orZero() == 0) {
+                highestWin.orZero()
+            } else {
+                (lowestLoss.orZero() + highestWin.orZero()) / 2
+            }
+            if (team.player1.point == null && team.player2.point == null) {
+                team.player1.gradingPoint = teamGradingPoint
+                team.player2.gradingPoint = teamGradingPoint
+            } else if(team.player1.point == null) {
+                team.player1.gradingPoint = teamGradingPoint * 2 - team.player2.point.orZero()
+            } else {
+                team.player2.gradingPoint = teamGradingPoint * 2 - team.player1.point.orZero()
+            }
+            val newTeamMap = HashMap(teamMap?: emptyMap())
+            val newRecord = HashMap(gameRecordMap?: emptyMap())
+            viewModel.teamMap.value = newTeamMap
+            viewModel.gameRecordMap.value = newRecord
+            ToastUtils.showShort("${team.displayName()}定级分已更新")
+        }
     }
 
     private fun clearGameRecordOfTeamIndex(teamIndex: Int) {
@@ -545,13 +605,23 @@ class MainActivity : ComponentActivity() {
         val teamMap by viewModel.teamMap.observeAsState()
         val team = teamMap?.get(index)
         team?.let {
-            Text(
-                text = createDisplayTopTextOfTeam(it),
-                color = Color(0xff333333),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.align(Alignment.Center)
-            )
+            Column (
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ){
+                Text(
+                    text = createDisplayTextOfPlayer(team.player1),
+                    color = Color(0xff333333),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = createDisplayTextOfPlayer(team.player2),
+                    color = Color(0xff333333),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
     }
 
@@ -567,13 +637,23 @@ class MainActivity : ComponentActivity() {
                 }
         ) {
             team?.let {
-                Text(
-                    text = createDisplayLeftTextOfTeam(it),
-                    color = Color(0xff333333),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                Column (
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ){
+                    Text(
+                        text = createDisplayTextOfPlayer(team.player1),
+                        color = Color(0xff333333),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = createDisplayTextOfPlayer(team.player2),
+                        color = Color(0xff333333),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
             }
         }
     }
@@ -714,7 +794,12 @@ class MainActivity : ComponentActivity() {
 
         val firstTeam = teamMap?.get(firstTeamIndex)
         val relatedGameRecords = gameRecordMap?.filter { it.key.startsWith("$firstTeamIndex") }?.values
-        if (firstTeam != null && !relatedGameRecords.isNullOrEmpty()) {
+        val allOpponentsHasScore = relatedGameRecords?.map { it.secondTeamIndex }
+            ?.map { teamMap?.get(it) }
+            ?.all { it?.calTeamAvgPoint() != null }
+        if (firstTeam?.calTeamAvgPoint() != null &&
+            relatedGameRecords?.size.orZero() == teamMap?.size.orZero() - 1 &&
+            allOpponentsHasScore == true) {
             val pointChange = relatedGameRecords.sumOf { record ->
                 val secondTeamIndex = record.secondTeamIndex
                 val secondTeam = teamMap?.get(secondTeamIndex)
@@ -724,10 +809,10 @@ class MainActivity : ComponentActivity() {
                     val gameResult = calGameResult(record)
                     val pointDiff = calTeamMatchPointDiff(firstTeam, secondTeam)
                     calTeamPointChange(
-                        pointDiff = pointDiff,
+                        pointDiff = pointDiff ?: 0,
                         result = gameResult,
                         teams = firstTeam to secondTeam,
-                    )
+                    ) ?: 0
                 }
             }
             Text(
