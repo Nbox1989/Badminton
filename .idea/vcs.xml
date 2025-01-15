@@ -2,6 +2,15 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$/.." vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../AihuishouLib" vcs="Git" />
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../HackServer" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../Spydroid" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../StoreSystemAsV3" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../ahslib" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../observerappforas_v3-1" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../official_android" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../rn-bridge-android" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../smurfs" vcs="Git" />
   </component>
 </project>

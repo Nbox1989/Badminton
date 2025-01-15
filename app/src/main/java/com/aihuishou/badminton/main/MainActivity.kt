@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val WIDTH_HEADER = 100
+        private const val WIDTH_GAME_RECORD_MIN = 2
         private const val WIDTH_GAME_RECORD = 80
         private const val WIDTH_WIN_LOSS = 70
         private const val WIDTH_POINT_CHANGE = 70
@@ -225,18 +226,18 @@ class MainActivity : ComponentActivity() {
             val lossGame = relatedGameRecords?.filter { calGameResult(it) == EnumGameResult.LOSS }
             val highestWin = winGame?.map {
                 val opponentTeam = teamMap?.get(it.secondTeamIndex)
-                ((opponentTeam?.player1?.point?: 1000) + (opponentTeam?.player2?.point?: 1000)) / 2
+                ((opponentTeam?.player1?.point?: 1000) + (opponentTeam?.player2?.point?: 1000) + 1) / 2
             }?.maxOf { it }
             val lowestLoss = lossGame?.map {
                 val opponentTeam = teamMap?.get(it.secondTeamIndex)
-                ((opponentTeam?.player1?.point ?: 1000) + (opponentTeam?.player2?.point ?: 1000)) / 2
+                ((opponentTeam?.player1?.point ?: 1000) + (opponentTeam?.player2?.point ?: 1000) + 1) / 2
             }?.minOf { it }
             val teamGradingPoint = if (winGame?.size.orZero() == 0 ) {
                 lowestLoss.orZero()
             } else if (lossGame?.size.orZero() == 0) {
                 highestWin.orZero()
             } else {
-                (lowestLoss.orZero() + highestWin.orZero()) / 2
+                (lowestLoss.orZero() + highestWin.orZero() + 1) / 2
             }
             if (team.player1.point == null && team.player2.point == null) {
                 team.player1.gradingPoint = teamGradingPoint
@@ -247,9 +248,9 @@ class MainActivity : ComponentActivity() {
                 team.player2.gradingPoint = teamGradingPoint * 2 - team.player1.point.orZero()
             }
             val newTeamMap = HashMap(teamMap?: emptyMap())
-            val newRecord = HashMap(gameRecordMap?: emptyMap())
+//            val newRecord = HashMap(gameRecordMap?: emptyMap())
             viewModel.teamMap.value = newTeamMap
-            viewModel.gameRecordMap.value = newRecord
+//            viewModel.gameRecordMap.value = newRecord
             ToastUtils.showShort("${team.displayName()}定级分已更新")
         }
     }
@@ -426,9 +427,12 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun RowScope.BadmintonColumnGameScore(column: Int) {
+        val teamMap by viewModel.teamMap.observeAsState()
+        val teamCount = teamMap?.size.orZero()
+        val width = if (column > teamCount) WIDTH_GAME_RECORD_MIN else WIDTH_GAME_RECORD
         Column(
             modifier = Modifier
-                .width(WIDTH_GAME_RECORD.dp)
+                .width(width.dp)
                 .fillMaxHeight()
         ) {
             repeat(9) {
@@ -835,11 +839,58 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.align(Alignment.Center)
             )
         }
-
     }
 
     @Composable
-    private fun BadmintonItemPointAfter(index: Int) {
+    private fun BadmintonItemPointAfter(firstTeamIndex: Int) {
+        val gameRecordMap by viewModel.gameRecordMap.observeAsState()
+        val teamMap by viewModel.teamMap.observeAsState()
 
+        val firstTeam = teamMap?.get(firstTeamIndex)
+        val relatedGameRecords = gameRecordMap?.filter { it.key.startsWith("$firstTeamIndex") }?.values
+        val allOpponentsHasScore = relatedGameRecords?.map { it.secondTeamIndex }
+            ?.map { teamMap?.get(it) }
+            ?.all { it?.calTeamAvgPoint() != null }
+        if (firstTeam?.calTeamAvgPoint() != null &&
+            relatedGameRecords?.size.orZero() == teamMap?.size.orZero() - 1 &&
+            allOpponentsHasScore == true) {
+            val pointChange = relatedGameRecords.sumOf { record ->
+                val secondTeamIndex = record.secondTeamIndex
+                val secondTeam = teamMap?.get(secondTeamIndex)
+                if (secondTeam == null) {
+                    0
+                } else {
+                    val gameResult = calGameResult(record)
+                    val pointDiff = calTeamMatchPointDiff(firstTeam, secondTeam)
+                    calTeamPointChange(
+                        pointDiff = pointDiff ?: 0,
+                        result = gameResult,
+                        teams = firstTeam to secondTeam,
+                    ) ?: 0
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                Column (
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ){
+                    Text(
+                        text = "${firstTeam.player1.name}(${firstTeam.player1.calMatchPoint().orZero() + pointChange})",
+                        color = Color(0xff333333),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "${firstTeam.player2.name}(${firstTeam.player2.calMatchPoint().orZero() + pointChange})",
+                        color = Color(0xff333333),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
+        }
     }
 }
