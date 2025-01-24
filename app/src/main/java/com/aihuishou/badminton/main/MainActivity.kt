@@ -1,6 +1,8 @@
 package com.aihuishou.badminton.main
 
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
@@ -11,12 +13,19 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -38,8 +47,14 @@ import com.aihuishou.badminton.main.dialog.TeamEditCallback
 import com.aihuishou.badminton.main.dialog.TeamEditDialog
 import com.aihuishou.badminton.ui.theme.ComposeTheme
 import com.aihuishou.badminton.utils.StorageUtil
+import com.blankj.utilcode.util.ImageUtils
+import com.blankj.utilcode.util.PathUtils
+import com.blankj.utilcode.util.TimeUtils
 import com.blankj.utilcode.util.ToastUtils
+import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
@@ -207,7 +222,8 @@ class MainActivity : ComponentActivity() {
                     viewModel.displayMatchDay.value = key
                 }
 
-                override fun onRequestGrade() {
+                override fun onScreenShot() {
+                    viewModel.screenShotTrigger.value = System.currentTimeMillis()
                 }
             })
     }
@@ -227,11 +243,11 @@ class MainActivity : ComponentActivity() {
             val highestWin = winGame?.map {
                 val opponentTeam = teamMap?.get(it.secondTeamIndex)
                 ((opponentTeam?.player1?.point?: 1000) + (opponentTeam?.player2?.point?: 1000) + 1) / 2
-            }?.maxOf { it }
+            }?.maxOfOrNull { it }
             val lowestLoss = lossGame?.map {
                 val opponentTeam = teamMap?.get(it.secondTeamIndex)
                 ((opponentTeam?.player1?.point ?: 1000) + (opponentTeam?.player2?.point ?: 1000) + 1) / 2
-            }?.minOf { it }
+            }?.minOfOrNull { it }
             val teamGradingPoint = if (winGame?.size.orZero() == 0 ) {
                 lowestLoss.orZero()
             } else if (lossGame?.size.orZero() == 0) {
@@ -239,18 +255,23 @@ class MainActivity : ComponentActivity() {
             } else {
                 (lowestLoss.orZero() + highestWin.orZero() + 1) / 2
             }
-            if (team.player1.point == null && team.player2.point == null) {
-                team.player1.gradingPoint = teamGradingPoint
-                team.player2.gradingPoint = teamGradingPoint
+            val playerPair = if (team.player1.point == null && team.player2.point == null) {
+                team.player1.copy(gradingPoint = teamGradingPoint) to
+                team.player2.copy(gradingPoint = teamGradingPoint)
             } else if(team.player1.point == null) {
-                team.player1.gradingPoint = teamGradingPoint * 2 - team.player2.point.orZero()
+                team.player1.copy(gradingPoint = teamGradingPoint * 2 - team.player2.point.orZero()) to
+                team.player2
             } else {
-                team.player2.gradingPoint = teamGradingPoint * 2 - team.player1.point.orZero()
+                team.player1 to
+                team.player2.copy(gradingPoint = teamGradingPoint * 2 - team.player1.point.orZero())
             }
+            val newTeam = Team(
+                player1 = playerPair.first,
+                player2 = playerPair.second
+            )
             val newTeamMap = HashMap(teamMap?: emptyMap())
-//            val newRecord = HashMap(gameRecordMap?: emptyMap())
+            newTeamMap[index] = newTeam
             viewModel.teamMap.value = newTeamMap
-//            viewModel.gameRecordMap.value = newRecord
             ToastUtils.showShort("${team.displayName()}定级分已更新")
         }
     }
@@ -363,16 +384,48 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun saveBitmapToLocal(bitmap: ImageBitmap) {
+//        val sdf = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
+//        val timeStr = TimeUtils.getNowString(sdf)
+//        val filePath = PathUtils.getExternalAppPicturesPath() + File.separator + "${timeStr}.jpg"
+//        val isSuccess = ImageUtils.save(bitmap.asAndroidBitmap(), filePath, Bitmap.CompressFormat.JPEG, true)
+        val file = ImageUtils.save2Album(bitmap.asAndroidBitmap(), Bitmap.CompressFormat.JPEG)
+        ToastUtils.showShort(if (file != null) "保存成功" else "保存失败")
+    }
+
     @Composable
     private fun BadmintonGrid() {
+        val coroutineScope = rememberCoroutineScope()
+        val graphicsLayer = rememberGraphicsLayer()
+        val shotTrigger by viewModel.screenShotTrigger.observeAsState()
+        LaunchedEffect(key1 = "shotTrigger is $shotTrigger") {
+            coroutineScope.launch {
+                if (shotTrigger != null) {
+                    val bitmap = graphicsLayer.toImageBitmap()
+                    saveBitmapToLocal(bitmap)
+                }
+            }
+        }
         Row (
             modifier = Modifier
                 .fillMaxSize()
                 .background(color = Color.White)
                 .horizontalScroll(rememberScrollState())
         ) {
-            repeat(12) {
-                BadmintonColumn(it)
+            Row (
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .wrapContentWidth()
+                    .drawWithContent {
+                        graphicsLayer.record {
+                            this@drawWithContent.drawContent()
+                        }
+                        drawLayer(graphicsLayer)
+                    }
+            ){
+                repeat(12) {
+                    BadmintonColumn(it)
+                }
             }
         }
     }

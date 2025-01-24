@@ -13,4 +13,6 @@ class MainViewModel: ViewModel() {
 
     val gameRecordMap = MutableLiveData<Map<String, GameRecord>?>()
 
+    val screenShotTrigger = MutableLiveData<Long>(null)
+
 }

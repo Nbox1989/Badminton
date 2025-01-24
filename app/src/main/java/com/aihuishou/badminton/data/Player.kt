@@ -4,7 +4,7 @@ data class Player(
     val name: String,
     val point: Int?,
     /** 定级分  **/
-    var gradingPoint: Int? = null,
+    val gradingPoint: Int? = null,
 ) {
     /** 参赛积分，积分->定级分->null **/
     fun calMatchPoint(): Int? {

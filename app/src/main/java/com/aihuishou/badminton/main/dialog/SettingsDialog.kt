@@ -8,8 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
@@ -17,19 +15,12 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.MutableLiveData
 import com.aihuishou.badminton.R
-import com.aihuishou.badminton.data.GameRecord
-import com.aihuishou.badminton.data.Player
-import com.aihuishou.badminton.data.Team
 import com.aihuishou.badminton.ui.theme.ComposeTheme
 import com.aihuishou.badminton.utils.StorageUtil
 import com.kongzue.dialogx.dialogs.CustomDialog
@@ -93,8 +84,9 @@ class SettingsDialog(private val activity: Activity) {
                 "切换日期" to {
                     displayContentType.value = "restore"
                 },
-                "计算定级分" to {
-                    displayContentType.value = "grade"
+                "屏幕截图" to {
+                    customDialog?.dismiss()
+                    listener?.onScreenShot()
                 },
                 "取消" to {
                     customDialog?.dismiss()
@@ -286,5 +278,5 @@ class SettingsDialog(private val activity: Activity) {
 
 interface SettingListener {
     fun loadMatchData(key: String)
-    fun onRequestGrade()
+    fun onScreenShot()
 }
