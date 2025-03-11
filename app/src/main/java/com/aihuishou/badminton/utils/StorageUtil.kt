@@ -1,6 +1,7 @@
 package com.aihuishou.badminton.utils
 
 import com.aihuishou.badminton.data.MatchData
+import com.aihuishou.badminton.data.NameAndPoint
 import com.google.gson.JsonSyntaxException
 
 object StorageUtil {
@@ -32,5 +33,22 @@ object StorageUtil {
             e.printStackTrace()
             null
         }
+    }
+
+    fun savePlayerPoints(players: List<NameAndPoint>) {
+        MMKVUtils.putString("players", players.map { GsonUtils.toJsonString(it) }.joinToString(separator = "|"))
+    }
+
+    fun getPlayerPoints(): List<NameAndPoint> {
+        return MMKVUtils.getString("players").split("|")
+            .map {
+                try {
+                    GsonUtils.parseJson(it, NameAndPoint::class.java)
+                } catch (e: JsonSyntaxException) {
+                    e.printStackTrace()
+                    null
+                }
+             }
+            .filterNotNull()
     }
 }

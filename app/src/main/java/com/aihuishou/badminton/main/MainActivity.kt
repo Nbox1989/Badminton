@@ -1,12 +1,8 @@
 package com.aihuishou.badminton.main
 
+import android.app.Activity
+import android.content.Intent
 import android.graphics.Bitmap
-import android.os.Bundle
-import android.util.Log
-import android.view.View
-import android.view.Window
-import android.view.WindowManager
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.*
@@ -34,8 +30,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aihuishou.badminton.basic.BasicActivity
 import com.aihuishou.badminton.data.GameRecord
 import com.aihuishou.badminton.data.MatchData
+import com.aihuishou.badminton.data.NameAndPoint
 import com.aihuishou.badminton.data.Player
 import com.aihuishou.badminton.data.Team
 import com.aihuishou.badminton.enums.EnumGameResult
@@ -45,21 +43,19 @@ import com.aihuishou.badminton.main.dialog.SettingListener
 import com.aihuishou.badminton.main.dialog.SettingsDialog
 import com.aihuishou.badminton.main.dialog.TeamEditCallback
 import com.aihuishou.badminton.main.dialog.TeamEditDialog
+import com.aihuishou.badminton.player.edit.PlayerListActivity
+import com.aihuishou.badminton.player.pick.PlayerPickActivity
 import com.aihuishou.badminton.ui.theme.ComposeTheme
 import com.aihuishou.badminton.utils.StorageUtil
 import com.blankj.utilcode.util.ImageUtils
-import com.blankj.utilcode.util.PathUtils
-import com.blankj.utilcode.util.TimeUtils
 import com.blankj.utilcode.util.ToastUtils
 import kotlinx.coroutines.launch
-import java.io.File
 import java.text.SimpleDateFormat
-import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
 
-class MainActivity : ComponentActivity() {
+class MainActivity : BasicActivity() {
 
     companion object {
         private const val WIDTH_HEADER = 100
@@ -68,37 +64,15 @@ class MainActivity : ComponentActivity() {
         private const val WIDTH_WIN_LOSS = 70
         private const val WIDTH_POINT_CHANGE = 70
         private const val WIDTH_POINT_AFTER = 100
+
+        private const val REQUEST_CODE_PICK_TEAM = 1001
     }
 
     private val viewModel: MainViewModel by viewModels()
 
     private var autoSaveFlag = false
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        requestWindowFeature(Window.FEATURE_NO_TITLE)
-
-        setupStatusBar()
-
-        initObservers()
-
-        setContent {
-            ComposeTheme {
-                BadmintonGrid()
-            }
-        }
-
-        initData()
-    }
-
-    private fun setupStatusBar() {
-        val window = window
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-        window.statusBarColor = android.graphics.Color.TRANSPARENT
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-    }
-
-    private fun initObservers() {
+    override fun initObservers() {
         viewModel.displayMatchDay.observe(this) {
             if (it != null) {
                 autoSaveFlag = false
@@ -116,8 +90,46 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun initData() {
+    override fun setupContent() {
+        setContent {
+            ComposeTheme {
+                BadmintonGrid()
+            }
+        }
+    }
+
+    override fun initData() {
         viewModel.displayMatchDay.value = createMatchDataCacheKey()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CODE_PICK_TEAM && resultCode == Activity.RESULT_OK) {
+            data?.let {
+                val index = it.getIntExtra("index", -1)
+                val player1 = it.getParcelableExtra<NameAndPoint>("player1")
+                val player2 = it.getParcelableExtra<NameAndPoint>("player2")
+                if (index < 0) {
+                    ToastUtils.showShort("索引错误")
+                } else if (player1 == null || player2 == null) {
+                    ToastUtils.showShort("请选择两个球员")
+                } else {
+                    val newTeam = Team(
+                        player1 = Player(
+                            name = player1.name.orEmpty(),
+                            point = player1.point,
+                        ),
+                        player2 = Player(
+                            name = player2.name.orEmpty(),
+                            point = player2.point,
+                        )
+                    )
+                    val newMap = HashMap(viewModel.teamMap.value?: emptyMap())
+                    newMap.put(index, newTeam)
+                    viewModel.teamMap.value = newMap
+                }
+            }
+        }
     }
 
     private fun restoreDataByDay(day: String) {
@@ -198,6 +210,16 @@ class MainActivity : ComponentActivity() {
         TeamEditDialog(this, team)
             .showDialog (
                 object : TeamEditCallback {
+                    override fun onRequestPickTeam() {
+                        this@MainActivity.startActivityForResult(
+                            Intent(this@MainActivity, PlayerPickActivity::class.java)
+                                .apply {
+                                    putExtra("index", index)
+                                },
+                            REQUEST_CODE_PICK_TEAM
+                        )
+                    }
+
                     override fun onTeamEditResult(newTeam: Team?) {
                         val newMap = HashMap(viewModel.teamMap.value?: emptyMap())
                         newMap.put(index, newTeam)
@@ -224,6 +246,10 @@ class MainActivity : ComponentActivity() {
 
                 override fun onScreenShot() {
                     viewModel.screenShotTrigger.value = System.currentTimeMillis()
+                }
+
+                override fun onEditPlayers() {
+                    startActivity(Intent(this@MainActivity, PlayerListActivity::class.java))
                 }
             })
     }

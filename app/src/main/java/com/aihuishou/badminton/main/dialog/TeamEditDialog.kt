@@ -90,6 +90,10 @@ class TeamEditDialog(private val activity: Activity, private val team: Team?) {
         ) {
             val list = if (team == null) {
                 listOf(
+                    "选择人员" to {
+                        callback?.onRequestPickTeam()
+                        customDialog?.dismiss()
+                    },
                     "创建队伍" to {
                         displayContentType.value = "create"
                     },
@@ -323,56 +327,60 @@ class TeamEditDialog(private val activity: Activity, private val team: Team?) {
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
-            Box (
-                modifier = Modifier
-                    .size(250.dp, 50.dp)
-                    .background(
-                        shape = RoundedCornerShape(50),
-                        color = Color(0xffF9E72C)
-                    )
-                    .clickable {
-                        val newTeam = Team(
-                            player1 = Player(
-                                name = inputName1,
-                                point = inputPoint1.toIntOrNull(),
-                            ),
-                            player2 = Player(
-                                name = inputName2,
-                                point = inputPoint2.toIntOrNull(),
-                            )
+            Row (
+                modifier = Modifier.wrapContentSize()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(100.dp, 40.dp)
+                        .background(
+                            shape = RoundedCornerShape(50),
+                            color = Color(0xffF9E72C)
                         )
-                        callback?.onTeamEditResult(newTeam)
-                        customDialog?.dismiss()
-                    }
-            ) {
-                Text(
-                    text = "确认创建队伍",
-                    fontSize = 14.sp,
-                    color = Color(0xff333333),
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                )
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            Box (
-                modifier = Modifier
-                    .size(250.dp, 50.dp)
-                    .border(
-                        width = 1.dp,
-                        shape = RoundedCornerShape(50),
-                        color = Color(0xff999999)
+                        .clickable {
+                            val newTeam = Team(
+                                player1 = Player(
+                                    name = inputName1,
+                                    point = inputPoint1.toIntOrNull(),
+                                ),
+                                player2 = Player(
+                                    name = inputName2,
+                                    point = inputPoint2.toIntOrNull(),
+                                )
+                            )
+                            callback?.onTeamEditResult(newTeam)
+                            customDialog?.dismiss()
+                        }
+                ) {
+                    Text(
+                        text = "确认创建",
+                        fontSize = 14.sp,
+                        color = Color(0xff333333),
+                        modifier = Modifier
+                            .align(Alignment.Center)
                     )
-                    .clickable {
-                        customDialog?.dismiss()
-                    }
-            ) {
-                Text(
-                    text = "取消",
-                    fontSize = 14.sp,
-                    color = Color(0xff333333),
+                }
+                Spacer(modifier = Modifier.width(25.dp))
+                Box(
                     modifier = Modifier
-                        .align(Alignment.Center)
-                )
+                        .size(100.dp, 40.dp)
+                        .border(
+                            width = 1.dp,
+                            shape = RoundedCornerShape(50),
+                            color = Color(0xff999999)
+                        )
+                        .clickable {
+                            customDialog?.dismiss()
+                        }
+                ) {
+                    Text(
+                        text = "取消",
+                        fontSize = 14.sp,
+                        color = Color(0xff333333),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(20.dp))
         }
@@ -667,6 +675,7 @@ class TeamEditDialog(private val activity: Activity, private val team: Team?) {
 }
 
 interface TeamEditCallback {
+    fun onRequestPickTeam()
     fun onTeamEditResult(newTeam: Team?)
     fun onRequestGrade(team: Team)
 }

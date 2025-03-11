@@ -1,7 +1,5 @@
 package com.aihuishou.badminton.data
 
-import com.aihuishou.badminton.enums.EnumGameResult
-
 data class GameRecord(
     val firstScore: Int,
     val secondScore: Int,

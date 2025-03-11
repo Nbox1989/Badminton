@@ -25,6 +25,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name="com.aihuishou.badminton.player.edit.PlayerListActivity"
+            android:theme="@style/Theme.Badminton"
+            android:screenOrientation="landscape">
+        </activity>
+        <activity
+            android:name="com.aihuishou.badminton.player.pick.PlayerPickActivity"
+            android:theme="@style/Theme.Badminton"
+            android:screenOrientation="landscape">
+        </activity>
     </application>
 
 </manifest>

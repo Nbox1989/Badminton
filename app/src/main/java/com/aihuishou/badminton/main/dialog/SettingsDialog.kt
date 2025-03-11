@@ -88,6 +88,10 @@ class SettingsDialog(private val activity: Activity) {
                     customDialog?.dismiss()
                     listener?.onScreenShot()
                 },
+                "人员维护" to {
+                    customDialog?.dismiss()
+                    listener?.onEditPlayers()
+                },
                 "取消" to {
                     customDialog?.dismiss()
                 }
@@ -279,4 +283,5 @@ class SettingsDialog(private val activity: Activity) {
 interface SettingListener {
     fun loadMatchData(key: String)
     fun onScreenShot()
+    fun onEditPlayers()
 }
