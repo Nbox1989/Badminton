@@ -251,7 +251,60 @@ class MainActivity : BasicActivity() {
                 override fun onEditPlayers() {
                     startActivity(Intent(this@MainActivity, PlayerListActivity::class.java))
                 }
+
+                override fun onUpdatePlayerPoints() {
+                    updatePlayerPoints()
+                }
             })
+    }
+
+    private fun updatePlayerPoints() {
+        val gameRecordMap = viewModel.gameRecordMap.value
+        val teamMap = viewModel.teamMap.value
+        if (teamMap?.any { it.value.player1.calMatchPoint() == null || it.value.player2.calMatchPoint() == null } == true) {
+            ToastUtils.showShort("还有未定级队员")
+            return
+        }
+
+        val playerPointMap = HashMap<String, Int>()
+
+        teamMap?.forEach { index, team ->
+            val relatedGameRecords = gameRecordMap?.filter { it.key.startsWith("$index") }?.values
+            val allOpponentsHasScore = relatedGameRecords?.map { it.secondTeamIndex }
+                ?.map { teamMap.get(it) }
+                ?.all { it?.calTeamAvgPoint() != null }
+            if (team.calTeamAvgPoint() != null &&
+                relatedGameRecords?.size.orZero() == teamMap.size.orZero() - 1 &&
+                allOpponentsHasScore == true) {
+                val pointChange = relatedGameRecords.sumOf { record ->
+                    val secondTeamIndex = record.secondTeamIndex
+                    val secondTeam = teamMap.get(secondTeamIndex)
+                    if (secondTeam == null) {
+                        0
+                    } else {
+                        val gameResult = calGameResult(record)
+                        val pointDiff = calTeamMatchPointDiff(team, secondTeam)
+                        calTeamPointChange(
+                            pointDiff = pointDiff ?: 0,
+                            result = gameResult,
+                            teams = team to secondTeam,
+                        ) ?: 0
+                    }
+                }
+                val player1Point = team.player1.calMatchPoint().orZero() + pointChange
+                val player2Point = team.player2.calMatchPoint().orZero() + pointChange
+
+                playerPointMap[team.player1.name] = player1Point
+                playerPointMap[team.player2.name] = player2Point
+            } else {
+                ToastUtils.showShort("队伍${team.displayName()}未完成比赛")
+                return@forEach
+            }
+        }
+        if (playerPointMap.size == teamMap?.size.orZero() * 2) {
+            val updateCount = StorageUtil.updatePlayerPoints(playerPointMap.map { it.key to it.value })
+            ToastUtils.showShort("共${updateCount}条记录已更新")
+        }
     }
 
     private fun calTeamGradingPoints(index: Int, team: Team) {
@@ -326,9 +379,9 @@ class MainActivity : BasicActivity() {
     }
 
     private fun calGameResult(record: GameRecord): EnumGameResult {
-        return if(record.firstScore == record.secondScore) {
+        return if(record.firstScore.orZero() == record.secondScore.orZero()) {
             EnumGameResult.DRAW
-        } else if(record.firstScore > record.secondScore) {
+        } else if(record.firstScore.orZero() > record.secondScore.orZero()) {
             EnumGameResult.WIN
         } else {
             EnumGameResult.LOSS

@@ -39,6 +39,21 @@ object StorageUtil {
         MMKVUtils.putString("players", players.map { GsonUtils.toJsonString(it) }.joinToString(separator = "|"))
     }
 
+    fun updatePlayerPoints(players: List<Pair<String, Int>>): Int {
+        val oldPlayers = getPlayerPoints().toMutableList()
+        var updateCount = 0
+        players.forEach { newPlayer ->
+            val player = oldPlayers.firstOrNull { it.name == newPlayer.first }
+            player?.let {
+                oldPlayers.remove(it)
+                oldPlayers.add(it.copy(point = newPlayer.second))
+                updateCount ++
+            }
+        }
+        savePlayerPoints(oldPlayers)
+        return updateCount
+    }
+
     fun getPlayerPoints(): List<NameAndPoint> {
         return MMKVUtils.getString("players").split("|")
             .map {

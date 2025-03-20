@@ -2,6 +2,7 @@ package com.aihuishou.badminton.main.dialog
 
 import android.app.Activity
 import android.view.View
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,38 +72,55 @@ class SettingsDialog(private val activity: Activity) {
 
     @Composable
     fun SettingsContentMenuList() {
-        Column(
-            modifier = Modifier
-                .wrapContentSize()
-                .background(
-                    color = Color.White,
-                    shape = RoundedCornerShape(10.dp)
-                ),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier.wrapContentSize()
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
-            listOf(
-                "切换日期" to {
-                    displayContentType.value = "restore"
-                },
-                "屏幕截图" to {
-                    customDialog?.dismiss()
-                    listener?.onScreenShot()
-                },
-                "人员维护" to {
-                    customDialog?.dismiss()
-                    listener?.onEditPlayers()
-                },
-                "取消" to {
-                    customDialog?.dismiss()
+            Column(
+                modifier = Modifier
+                    .wrapContentSize()
+                    .background(
+                        color = Color.White,
+                        shape = RoundedCornerShape(10.dp)
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(40.dp))
+                listOf(
+                    "切换日期" to {
+                        displayContentType.value = "restore"
+                    },
+                    "屏幕截图" to {
+                        customDialog?.dismiss()
+                        listener?.onScreenShot()
+                    },
+                    "人员维护" to {
+                        customDialog?.dismiss()
+                        listener?.onEditPlayers()
+                    },
+                    "更新积分" to {
+                        customDialog?.dismiss()
+                        listener?.onUpdatePlayerPoints()
+                    },
+                ).forEach {
+                    TeamEditContentMenu(it.first) {
+                        it.second.invoke()
+                    }
+                    Spacer(modifier = Modifier.height(15.dp))
                 }
-            ).forEach {
-                TeamEditContentMenu(it.first) {
-                    it.second.invoke()
-                }
-                Spacer(modifier = Modifier.height(15.dp))
+                Spacer(modifier = Modifier.height(25.dp))
             }
-            Spacer(modifier = Modifier.height(25.dp))
+            Image(
+                painter = painterResource(id = R.mipmap.ic_dialog_close),
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(top = 5.dp, end = 5.dp)
+                    .clickable {
+                        customDialog?.dismiss()
+                    }
+                    .align(Alignment.TopEnd)
+                    .size(20.dp)
+                    .padding(5.dp)
+            )
         }
     }
 
@@ -284,4 +303,5 @@ interface SettingListener {
     fun loadMatchData(key: String)
     fun onScreenShot()
     fun onEditPlayers()
+    fun onUpdatePlayerPoints()
 }

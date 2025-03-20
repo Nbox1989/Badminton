@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.aihuishou.badminton.R
 import com.aihuishou.badminton.data.GameRecord
 import com.aihuishou.badminton.data.Team
+import com.aihuishou.badminton.ext.orZero
 import com.aihuishou.badminton.ui.theme.ComposeTheme
 import com.kongzue.dialogx.dialogs.CustomDialog
 import com.kongzue.dialogx.interfaces.OnBindView
@@ -94,8 +95,8 @@ class InsertGameRecordDialog(
                     color = Color(0xff333333),
                 )
                 LaunchedEffect(key1 = "GameRecordDialogContent") {
-                    inputScore1 = gameRecord.firstScore.toString()
-                    inputScore2 = gameRecord.secondScore.toString()
+                    inputScore1 = gameRecord.firstScore.takeIf { it.orZero() > 0 }?.toString().orEmpty()
+                    inputScore2 = gameRecord.secondScore.takeIf { it.orZero() > 0 }?.toString().orEmpty()
                 }
                 BasicTextField(
                     modifier = Modifier

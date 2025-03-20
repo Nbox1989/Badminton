@@ -1,8 +1,8 @@
 package com.aihuishou.badminton.data
 
 data class GameRecord(
-    val firstScore: Int,
-    val secondScore: Int,
+    val firstScore: Int?,
+    val secondScore: Int?,
     /** 主队 **/
     val firstTeamIndex: Int,
     /** 客队 **/
